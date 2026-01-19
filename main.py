@@ -1,6 +1,13 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import time
+import random
+
+width, height = 640, 480
+
+start_time = time.time()
+last_change = time.time()
 
 def euclidean(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
@@ -22,7 +29,11 @@ face_mesh = mp_face_mesh.FaceMesh(
 LEFT_EYE = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE = [362, 385, 387, 263, 373, 380]
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
+cap.set(3, width)
+cap.set(4, height)
+
+shape_pos = (width//2, height//2)
 
 EAR_THRESHOLD = 0.20
 CLOSED_FRAMES = 2
@@ -39,6 +50,19 @@ while True:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = face_mesh.process(rgb)
     
+    now = time.time()
+
+    if now - last_change > 4:
+        x = random.randint(50, width - 50)
+        y = random.randint(50, height - 50)
+        shape_pos = (x, y)
+        last_change = now
+
+    x, y = shape_pos
+    size = 15
+    thickness = 2
+    color = (0, 255, 0)
+
     if results.multi_face_landmarks:
         lm = results.multi_face_landmarks[0].landmark
         
@@ -56,8 +80,21 @@ while True:
                 print("Blink count:", blink_total)
             closed_counter = 0
     
+    cv2.line(frame, (x - size, y), (x + size, y), color, thickness)
+    cv2.line(frame, (x, y - size), (x, y + size), color, thickness)
+
     cv2.imshow("Blink Detection", frame)
     
+    if time.time() - start_time >= 30:
+        bpm = blink_total * 2
+        if bpm> 12:
+            print ("Normal")
+        elif 8 <= bpm < 12:
+            print ("Mild risk")
+        elif bpm < 8:
+            print ("High risk")
+        break
+
     if cv2.waitKey(1) & 0xFF == 27:
         break
 
