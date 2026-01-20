@@ -19,20 +19,26 @@ def eye_aspect_ratio(eye):
     C = euclidean(eye[0], eye[3])
     return (A + B) / (2.0 * C)
 
+LEFT_EYE = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE = [362, 385, 387, 263, 373, 380]
+
 mp_face_mesh = mp.solutions.face_mesh
+
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+if not cap.isOpened():
+    print("RESULT:0,Camera Error", flush=True)
+    sys.exit(0)
+
+cap.set(3, width)
+cap.set(4, height)
+
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
     refine_landmarks=True,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
-
-LEFT_EYE = [33, 160, 158, 133, 153, 144]
-RIGHT_EYE = [362, 385, 387, 263, 373, 380]
-
-cap = cv2.VideoCapture(0)
-cap.set(3, width)
-cap.set(4, height)
 
 shape_pos = (width//2, height//2)
 
@@ -44,13 +50,14 @@ blink_total = 0
 while True:
     ret, frame = cap.read()
     if not ret:
+        print("RESULT:0,Frame Error", flush=True)
         break
-    
+
     frame = cv2.flip(frame, 1)
     h, w, _ = frame.shape
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = face_mesh.process(rgb)
-    
+
     now = time.time()
 
     if now - last_change > 4:
@@ -61,30 +68,28 @@ while True:
 
     x, y = shape_pos
     size = 15
-    thickness = 2
-    color = (0, 255, 0)
 
     if results.multi_face_landmarks:
         lm = results.multi_face_landmarks[0].landmark
-        
+
         left_eye = [(int(lm[i].x * w), int(lm[i].y * h)) for i in LEFT_EYE]
         right_eye = [(int(lm[i].x * w), int(lm[i].y * h)) for i in RIGHT_EYE]
-        
+
         left_ear = eye_aspect_ratio(left_eye)
         right_ear = eye_aspect_ratio(right_eye)
-            
+
         if left_ear < EAR_THRESHOLD and right_ear < EAR_THRESHOLD:
             closed_counter += 1
         else:
             if closed_counter >= CLOSED_FRAMES:
                 blink_total += 1
             closed_counter = 0
-    
-    cv2.line(frame, (x - size, y), (x + size, y), color, thickness)
-    cv2.line(frame, (x, y - size), (x, y + size), color, thickness)
+
+    cv2.line(frame, (x - size, y), (x + size, y), (0,255,0), 2)
+    cv2.line(frame, (x, y - size), (x, y + size), (0,255,0), 2)
 
     cv2.imshow("Blink Detection", frame)
-    
+
     if time.time() - start_time >= 30:
         bpm = blink_total * 2
 
@@ -96,9 +101,7 @@ while True:
             status = "High Risk"
 
         print(f"RESULT:{bpm},{status}", flush=True)
-        sys.stdout.flush()
         break
-
 
     if cv2.waitKey(1) & 0xFF == 27:
         break

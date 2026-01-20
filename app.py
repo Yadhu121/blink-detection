@@ -1,7 +1,12 @@
 from flask import Flask, jsonify, render_template
 import subprocess
+import sys
+import os
 
 app = Flask(__name__)
+
+# This is the Python executable running Flask (venv python)
+PYTHON_EXE = sys.executable
 
 @app.route("/")
 def home():
@@ -11,11 +16,11 @@ def home():
 def run_test():
     try:
         p = subprocess.Popen(
-            ["python", "main.py"],
+            [PYTHON_EXE, "-u", "main.py"],   # run blink script using SAME python
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1
+            cwd=os.getcwd()
         )
 
         bpm = None
@@ -26,7 +31,7 @@ def run_test():
             if not line:
                 break
 
-            print("PY:", line.strip())  # debug in terminal
+            print("PY:", line.strip())
 
             if line.startswith("RESULT:"):
                 data = line.replace("RESULT:", "").strip()
@@ -36,6 +41,8 @@ def run_test():
         p.wait()
 
         if bpm is None:
+            err = p.stderr.read()
+            print("ERR:", err)
             return jsonify({"error": "No result received from blink script"})
 
         return jsonify({"bpm": bpm, "status": status})
@@ -45,4 +52,3 @@ def run_test():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
