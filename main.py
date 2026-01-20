@@ -3,6 +3,7 @@ import mediapipe as mp
 import numpy as np
 import time
 import random
+import sys
 
 width, height = 640, 480
 
@@ -77,7 +78,6 @@ while True:
         else:
             if closed_counter >= CLOSED_FRAMES:
                 blink_total += 1
-                print("Blink count:", blink_total)
             closed_counter = 0
     
     cv2.line(frame, (x - size, y), (x + size, y), color, thickness)
@@ -87,13 +87,18 @@ while True:
     
     if time.time() - start_time >= 30:
         bpm = blink_total * 2
-        if bpm> 12:
-            print ("Normal")
-        elif 8 <= bpm < 12:
-            print ("Mild risk")
-        elif bpm < 8:
-            print ("High risk")
+
+        if bpm > 12:
+            status = "Normal"
+        elif 8 <= bpm <= 12:
+            status = "Mild Risk"
+        else:
+            status = "High Risk"
+
+        print(f"RESULT:{bpm},{status}", flush=True)
+        sys.stdout.flush()
         break
+
 
     if cv2.waitKey(1) & 0xFF == 27:
         break
