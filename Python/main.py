@@ -1,0 +1,119 @@
+import cv2
+import mediapipe as mp
+import numpy as np
+import time
+import random
+import requests
+
+PORT = 5058
+
+width, height = 640, 480
+
+start_time = time.time()
+last_change = time.time()
+
+def euclidean(p1, p2):
+    return np.linalg.norm(np.array(p1) - np.array(p2))
+
+def eye_aspect_ratio(eye):
+    A = euclidean(eye[1], eye[5])
+    B = euclidean(eye[2], eye[4])
+    C = euclidean(eye[0], eye[3])
+    return (A + B) / (2.0 * C)
+
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
+
+LEFT_EYE = [33, 160, 158, 133, 153, 144]
+RIGHT_EYE = [362, 385, 387, 263, 373, 380]
+
+cap = cv2.VideoCapture(0)
+cap.set(3, width)
+cap.set(4, height)
+
+shape_pos = (width//2, height//2)
+
+EAR_THRESHOLD = 0.20
+CLOSED_FRAMES = 2
+closed_counter = 0
+blink_total = 0
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    frame = cv2.flip(frame, 1)
+    h, w, _ = frame.shape
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb)
+    
+    now = time.time()
+
+    if now - last_change > 4:
+        x = random.randint(50, width - 50)
+        y = random.randint(50, height - 50)
+        shape_pos = (x, y)
+        last_change = now
+
+    x, y = shape_pos
+    size = 15
+    thickness = 2
+    color = (0, 255, 0)
+
+    if results.multi_face_landmarks:
+        lm = results.multi_face_landmarks[0].landmark
+        
+        left_eye = [(int(lm[i].x * w), int(lm[i].y * h)) for i in LEFT_EYE]
+        right_eye = [(int(lm[i].x * w), int(lm[i].y * h)) for i in RIGHT_EYE]
+        
+        left_ear = eye_aspect_ratio(left_eye)
+        right_ear = eye_aspect_ratio(right_eye)
+            
+        if left_ear < EAR_THRESHOLD and right_ear < EAR_THRESHOLD:
+            closed_counter += 1
+        else:
+            if closed_counter >= CLOSED_FRAMES:
+                blink_total += 1
+                print("Blink count:", blink_total)
+            closed_counter = 0
+    
+    cv2.line(frame, (x - size, y), (x + size, y), color, thickness)
+    cv2.line(frame, (x, y - size), (x, y + size), color, thickness)
+
+    cv2.imshow("Blink Detection", frame)
+    
+    if time.time() - start_time >= 30:
+        bpm = blink_total * 2
+
+        if bpm > 12:
+            level = "Normal"
+        elif 8 <= bpm < 12:
+            level = "Mild risk"
+        else:
+            level = "High risk"
+
+        print("Final result:", bpm, level)
+
+        try:
+            r = requests.post(
+            f"http://localhost:{PORT}/Home/ReceiveBlink",
+            json={"bpm": bpm, "level": level},
+            timeout=5
+            )
+            print("Result sent to ASP.NET, status:", r.status_code)
+        except Exception as e:
+            print("Failed to send result:", e)
+
+        break
+
+    if cv2.waitKey(1) & 0xFF == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()

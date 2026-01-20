@@ -1,0 +1,9 @@
+bin/
+obj/
+venv/
+Python/
+.git/
+.vscode/
+node_modules/
+*.md
+

@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "Blink Result";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Blink Result</title>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+            background: #f6f7f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .card {
+            background: #ffffff;
+            max-width: 360px;
+            margin: 100px auto;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .bpm {
+            font-size: 32px;
+            font-weight: 700;
+            color: #4f46e5;
+            margin: 10px 0;
+        }
+
+        .status {
+            font-size: 16px;
+            padding: 8px 14px;
+            display: inline-block;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            margin-top: 10px;
+        }
+
+        .waiting {
+            background: #fff7ed;
+            color: #9a3412;
+        }
+
+        .note {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h2>Blink Result</h2>
+
+        <div class="bpm">@ViewBag.Bpm BPM</div>
+
+        @if ((string)ViewBag.Level == "Waiting...")
+        {
+            <div class="status waiting">@ViewBag.Level</div>
+            <div class="note">Calculating... please keep looking at the camera</div>
+
+            <script>
+                setTimeout(() => location.reload(), 3000);
+            </script>
+        }
+        else
+        {
+            <div class="status">@ViewBag.Level</div>
+        }
+    </div>
+
+</body>
+</html>
